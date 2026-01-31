@@ -16,6 +16,11 @@ export default function ProgressView({ status, currentAgent, progress, component
   ];
 
   const currentAgentIndex = agents.findIndex(a => a.id === currentAgent);
+  
+  // Calculate progress percentage, ensuring it's between 0 and 100
+  // Use raw progress value directly (should be 0-1)
+  const rawProgress = progress || 0;
+  const progressPercent = Math.min(Math.max(rawProgress * 100, 0), 100);
 
   return (
     <div className="progress-view">
@@ -24,7 +29,15 @@ export default function ProgressView({ status, currentAgent, progress, component
           <h2>Migration Progress</h2>
           <span className={`migration-status status-${status}`}>
             {status === 'running' && <span className="status-pulse" />}
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {status === 'running' && currentAgent 
+              ? `${currentAgent.charAt(0).toUpperCase() + currentAgent.slice(1)} Agent`
+              : status === 'failed' 
+                ? '❌ Failed'
+                : status === 'complete'
+                  ? '✅ Complete'
+                  : status === 'stopped'
+                    ? '⏹ Stopped'
+                    : status.charAt(0).toUpperCase() + status.slice(1)}
           </span>
         </div>
         
@@ -41,24 +54,35 @@ export default function ProgressView({ status, currentAgent, progress, component
       </div>
 
       <div className="progress-bar-section">
-        <div className="main-progress-bar">
-          <div 
-            className="progress-fill"
-            style={{ 
-              width: `${progress * 100}%`,
-              background: currentAgent ? agentColors[currentAgent] : '#34d399'
-            }}
-          />
-          <div className="progress-glow" style={{ left: `${progress * 100}%` }} />
+        <div className="progress-bar-wrapper">
+          <div className="main-progress-bar">
+            <div 
+              className="progress-fill"
+              style={{ 
+                width: `${progressPercent}%`,
+                background: currentAgent ? agentColors[currentAgent] : '#34d399',
+              }}
+            />
+            <div className="progress-glow" style={{ left: `${progressPercent}%` }} />
+          </div>
+        <div className="progress-percentage">
+          {Math.round(progressPercent)}%
         </div>
-        <div className="progress-percentage">{Math.round(progress * 100)}%</div>
+        </div>
       </div>
 
       <div className="agents-timeline">
         {agents.map((agent, index) => {
           const isActive = currentAgent === agent.id;
-          const isComplete = currentAgentIndex > index;
-          const isFuture = currentAgentIndex < index || currentAgentIndex === -1;
+          // Calculate if agent is complete based on progress and current agent
+          // Progress thresholds: ingest=0.2, analyze=0.4, plan=0.5, execute=0.7, test=0.8, verify=0.9, review=0.95, document=1.0
+          const progressThresholds = [0.2, 0.4, 0.5, 0.7, 0.8, 0.9, 0.95, 1.0];
+          const agentProgressThreshold = progressThresholds[index] || (index + 1) * 0.125;
+          
+          const isComplete = status === 'complete' || 
+                           (currentAgentIndex > index) ||
+                           (progress >= agentProgressThreshold && currentAgentIndex !== index);
+          const isFuture = !isActive && !isComplete;
 
           return (
             <div 
@@ -96,12 +120,9 @@ export default function ProgressView({ status, currentAgent, progress, component
       )}
 
       {status === 'complete' && (
-        <div className="complete-message">
+        <div className="complete-message-compact">
           <div className="complete-icon">🎉</div>
-          <p>Migration Complete!</p>
-          <p className="complete-stats">
-            {completedCount} components successfully migrated
-          </p>
+          <p>Migration Complete! {completedCount} components migrated</p>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from backend.models import ClassComponent, ComponentType
+from ..models import ClassComponent, ComponentType
 
 
 class AnalyzeAgent:
@@ -261,8 +261,17 @@ class AnalyzeAgent:
         # Map dependencies
         dependency_map = self.map_dependencies(class_components, repo_path)
         
+        # Convert to dict and ensure file_path is a string
+        class_components_dict = []
+        for comp in class_components:
+            comp_dict = comp.dict()
+            # Ensure file_path is a string (not Path object)
+            if hasattr(comp_dict.get("file_path"), '__str__') and not isinstance(comp_dict.get("file_path"), str):
+                comp_dict["file_path"] = str(comp_dict["file_path"])
+            class_components_dict.append(comp_dict)
+        
         return {
-            "class_components": [comp.dict() for comp in class_components],
+            "class_components": class_components_dict,
             "dependency_map": dependency_map,
             "total_components": len(class_components),
             "total_files": len(react_files)

@@ -41,10 +41,17 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-3. Run the backend:
+3. Run the backend (from project root):
 ```bash
+# Option 1: Using uvicorn directly
+uvicorn backend.main:app --reload
+
+# Option 2: Using Python module
+python -m backend.main
+
+# Option 3: From backend directory (if PYTHONPATH is set)
 cd backend
-uvicorn main:app --reload
+python -m backend.main
 ```
 
 ## Migration Transformation Rules

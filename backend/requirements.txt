@@ -1,0 +1,26 @@
+# Core Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# AI & LLM
+google-generativeai==0.8.3
+langgraph==0.2.40  # For multi-agent orchestration (Phase 2)
+
+# Database
+sqlalchemy==2.0.36
+aiosqlite==0.20.0
+
+# Data Models
+pydantic==2.9.2
+
+# Git Operations
+gitpython==3.1.40
+
+# Environment & Configuration
+python-dotenv==1.0.1
+
+# WebSocket Support (included with uvicorn, but explicit for clarity)
+websockets==13.1
+
+# Testing & Verification (Phase 2)
+playwright==1.48.0  # For visual regression testing

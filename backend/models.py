@@ -19,6 +19,8 @@ class MigrationStatus(str, Enum):
     DOCUMENTING = "documenting"
     COMPLETED = "completed"
     FAILED = "failed"
+    PAUSED = "paused"
+    STOPPED = "stopped"
 
 
 class ComponentType(str, Enum):

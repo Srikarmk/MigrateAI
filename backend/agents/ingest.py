@@ -23,31 +23,95 @@ class IngestAgent:
     
     async def clone_repository(self, repo_url: str, branch: str = "main") -> str:
         """
-        Clone a git repository.
+        Clone a git repository or use local path.
         
         Args:
-            repo_url: URL of the repository to clone
+            repo_url: URL of the repository to clone, or local path
             branch: Branch to checkout (default: main)
         
         Returns:
-            Path to the cloned repository
+            Path to the repository
+        
+        Raises:
+            ValueError: If git clone fails or path is invalid
         """
+        # FIRST check if it's a git URL (before checking local paths)
+        # This prevents treating GitHub URLs as local paths
+        is_git_url = (
+            repo_url.startswith("http://") or 
+            repo_url.startswith("https://") or 
+            repo_url.startswith("git@") or
+            "github.com" in repo_url or
+            "gitlab.com" in repo_url or
+            "bitbucket.org" in repo_url
+        )
+        
+        # If it's a git URL, normalize and clone
+        if is_git_url:
+            # Normalize GitHub URLs
+            if "github.com" in repo_url:
+                if not repo_url.startswith("http"):
+                    repo_url = f"https://{repo_url}"
+                if not repo_url.endswith(".git"):
+                    repo_url = f"{repo_url}.git"
+            print(f"Detected git URL: {repo_url}")
+        else:
+            # Check if it's a local path (only if not a git URL)
+            if os.path.exists(repo_url) and os.path.isdir(repo_url):
+                self.repo_path = os.path.abspath(repo_url)
+                print(f"Using local path: {self.repo_path}")
+                return self.repo_path
+            else:
+                raise ValueError(f"Invalid repository URL or path: {repo_url}. Must be a git URL (http/https/git@) or existing local directory.")
+        
+        # If we get here, it's a git URL - proceed with cloning
+        
+        # Extract repo name from URL
         repo_name = repo_url.split("/")[-1].replace(".git", "")
+        if not repo_name:
+            repo_name = repo_url.split("/")[-2] if "/" in repo_url else "repo"
+        
         self.repo_path = os.path.join(self.work_dir, repo_name)
+        print(f"Cloning git repository: {repo_url} to {self.repo_path}")
         
         # Clone the repository
-        if os.path.exists(self.repo_path):
-            # If already exists, pull latest changes
-            repo = Repo(self.repo_path)
-            repo.remotes.origin.pull()
-        else:
-            repo = Repo.clone_from(repo_url, self.repo_path)
-        
-        # Checkout specified branch
-        if branch != repo.active_branch.name:
-            repo.git.checkout(branch)
-        
-        return self.repo_path
+        try:
+            if os.path.exists(self.repo_path):
+                # If already exists, try to pull latest changes
+                try:
+                    repo = Repo(self.repo_path)
+                    if repo.remotes:
+                        repo.remotes.origin.pull()
+                except Exception as e:
+                    # If pull fails, remove and re-clone
+                    import shutil
+                    shutil.rmtree(self.repo_path)
+                    repo = Repo.clone_from(repo_url, self.repo_path)
+            else:
+                repo = Repo.clone_from(repo_url, self.repo_path)
+            
+            # Checkout specified branch if it's a git repo
+            try:
+                repo = Repo(self.repo_path)
+                if branch and hasattr(repo, 'active_branch'):
+                    current_branch = repo.active_branch.name
+                    if branch != current_branch:
+                        # Try to checkout the branch
+                        try:
+                            repo.git.checkout(branch)
+                        except Exception:
+                            # Branch might not exist, try to fetch and checkout
+                            repo.git.fetch()
+                            repo.git.checkout(branch)
+            except Exception as e:
+                # Not a git repo or branch doesn't exist, log but continue
+                print(f"Warning: Could not checkout branch {branch}: {e}")
+            
+            return self.repo_path
+            
+        except Exception as e:
+            error_msg = f"Failed to clone repository {repo_url}: {str(e)}"
+            raise ValueError(error_msg) from e
     
     def build_file_tree(self, root_path: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -212,23 +276,43 @@ class IngestAgent:
         Returns:
             Dictionary with ingestion results
         """
+        # Determine if it's local or remote
+        is_local = os.path.exists(repo_url) and os.path.isdir(repo_url)
+        is_remote = (
+            repo_url.startswith("http://") or 
+            repo_url.startswith("https://") or 
+            repo_url.startswith("git@") or
+            ("github.com" in repo_url and not is_local) or
+            ("gitlab.com" in repo_url and not is_local) or
+            ("bitbucket.org" in repo_url and not is_local)
+        )
+        
+        print(f"Ingesting repository - URL: {repo_url}, Type: {'local' if is_local else 'remote (git)'}")
+        
         # Clone repository
         repo_path = await self.clone_repository(repo_url, branch)
         
+        print(f"Repository path resolved: {repo_path}")
+        
         # Build file tree
         file_tree = self.build_file_tree(repo_path)
+        print(f"File tree built with {len(file_tree)} top-level items")
         
         # Detect tech stack
         tech_stack = self.detect_tech_stack(repo_path)
+        print(f"Tech stack detected: {tech_stack}")
         
         # Get React files
         react_files = self.get_react_files(repo_path)
+        print(f"Found {len(react_files)} React files")
         
         return {
             "repo_path": repo_path,
             "file_tree": file_tree,
             "tech_stack": tech_stack,
-            "react_files": react_files
+            "react_files": react_files,
+            "is_local": is_local,
+            "is_remote": is_remote
         }
     
     def cleanup(self):

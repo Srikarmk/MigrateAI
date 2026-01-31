@@ -36,26 +36,13 @@ export default function Dashboard({ migrationState, agentColors }) {
         <div className="current-agent-card" style={{ '--agent-color': agentColors[currentAgent] }}>
           <div className="agent-indicator">
             <span className="agent-pulse" />
-            <span className="agent-name">{currentAgent}</span>
+            <span className="agent-name">{currentAgent.charAt(0).toUpperCase() + currentAgent.slice(1)} Agent</span>
           </div>
           <div className="agent-status">
-            Currently processing...
+            {status === 'running' ? 'Currently processing...' : status === 'complete' ? 'Migration complete!' : 'Waiting...'}
           </div>
         </div>
       )}
-
-      <div className="progress-section">
-        <div className="progress-header">
-          <span>Overall Progress</span>
-          <span className="progress-percent">{Math.round(progress * 100)}%</span>
-        </div>
-        <div className="progress-bar-container">
-          <div 
-            className="progress-bar-fill"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-      </div>
     </div>
   );
 }

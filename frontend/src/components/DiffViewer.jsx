@@ -45,10 +45,25 @@ export default function DiffViewer({ component, currentComponent }) {
   if (!displayComponent) {
     return (
       <div className="diff-viewer empty">
-        <div className="empty-state">
-          <div className="empty-icon">📄</div>
-          <p>Select a component to view changes</p>
-          <p className="empty-hint">Click on a component in the file tree</p>
+        <div className="empty-state-prominent">
+          <div className="empty-icon-large">📋</div>
+          <h2 className="empty-title">Migration Complete!</h2>
+          <p className="empty-message">Select a component from the left panel to view the migration changes</p>
+          <div className="empty-instructions">
+            <div className="instruction-step">
+              <span className="step-number">1</span>
+              <span>Click on any component in the left panel</span>
+            </div>
+            <div className="instruction-step">
+              <span className="step-number">2</span>
+              <span>View the before/after code comparison</span>
+            </div>
+            <div className="instruction-step">
+              <span className="step-number">3</span>
+              <span>See how class components were converted to hooks</span>
+            </div>
+          </div>
+          <div className="empty-arrow">←</div>
         </div>
       </div>
     );
@@ -121,7 +136,7 @@ export default function DiffViewer({ component, currentComponent }) {
   const data = diffData || demoData;
 
   return (
-    <div className="diff-viewer">
+    <div className="diff-viewer" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div className="diff-header">
         <div className="diff-title">
           <span className="diff-icon">🔄</span>

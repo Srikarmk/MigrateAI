@@ -43,7 +43,7 @@ export default function LogStream({ logs, thoughtSignatures, currentAgent, agent
   };
 
   return (
-    <div className="log-stream">
+    <div className="log-stream" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div className="log-tabs">
         <button
           className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
@@ -105,7 +105,7 @@ export default function LogStream({ logs, thoughtSignatures, currentAgent, agent
       )}
 
       {activeTab === 'thoughts' && (
-        <div className="thoughts-content">
+        <div className="thoughts-content" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {thoughtSignatures.length === 0 ? (
             <div className="empty-thoughts">
               <span className="empty-icon">💭</span>
@@ -114,22 +114,43 @@ export default function LogStream({ logs, thoughtSignatures, currentAgent, agent
             </div>
           ) : (
             <div className="thought-entries">
-              {thoughtSignatures.map((thought, index) => (
-                <div 
-                  key={index} 
-                  className="thought-entry"
-                  style={{ '--agent-color': agentColors[currentAgent] || '#60a5fa' }}
-                >
-                  <div className="thought-header">
-                    <span className="thought-icon">🧠</span>
-                    <span className="thought-time">{formatTimestamp(thought.timestamp)}</span>
+              {thoughtSignatures.map((thought, index) => {
+                // Handle timestamp - could be ISO string, number, or missing
+                let timestamp = thought.timestamp;
+                try {
+                  if (typeof timestamp === 'number') {
+                    // If it's a Unix timestamp (seconds), convert to milliseconds
+                    if (timestamp < 946684800) { // Year 2000 in seconds
+                      timestamp = new Date(timestamp * 1000).toISOString();
+                    } else {
+                      timestamp = new Date(timestamp).toISOString();
+                    }
+                  } else if (!timestamp || typeof timestamp !== 'string') {
+                    timestamp = new Date().toISOString();
+                  }
+                  // If it's already an ISO string, use it as is
+                } catch (e) {
+                  console.error('[LogStream] Error parsing timestamp:', timestamp, e);
+                  timestamp = new Date().toISOString();
+                }
+                
+                return (
+                  <div 
+                    key={`thought-${index}-${timestamp}`} 
+                    className="thought-entry"
+                    style={{ '--agent-color': agentColors[currentAgent] || '#60a5fa' }}
+                  >
+                    <div className="thought-header">
+                      <span className="thought-icon">🧠</span>
+                      <span className="thought-time">{formatTimestamp(timestamp)}</span>
+                    </div>
+                    <div className="thought-content">
+                      <p>{thought.content || 'No content'}</p>
+                    </div>
+                    <div className="thought-connector" />
                   </div>
-                  <div className="thought-content">
-                    <p>{thought.content}</p>
-                  </div>
-                  <div className="thought-connector" />
-                </div>
-              ))}
+                );
+              })}
               <div ref={thoughtsEndRef} />
             </div>
           )}
